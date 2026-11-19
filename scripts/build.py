@@ -150,7 +150,7 @@ def index(items):
     desc = "어젯밤 그 꿈, 무슨 뜻일까요? 키워드를 입력하고 상황을 고르면 해몽을 확인할 수 있습니다."
     parts = [head(title, desc, "/")]
     parts.append("<h1>어젯밤 꿈, 무슨 뜻일까요?</h1>")
-    parts.append('<div class="search"><div class="searchrow"><input id="q" type="search" placeholder="꿈 키워드 입력 (예: 돼지, 똥, 떨어지는 꿈)" autocomplete="off"><button id="go" type="button">결과 확인하기</button></div><div id="noresult" class="hidden">찾는 키워드가 아직 없어요. 아래 목록에서 골라보세요.</div></div>')
+    parts.append('<div class="search"><input id="q" type="search" placeholder="꿈 키워드 입력 (예: 돼지, 똥, 떨어지는 꿈)" autocomplete="off"><button id="go" type="button">결과 확인하기</button><div id="noresult" class="hidden">찾는 키워드가 아직 없어요. 아래 목록에서 골라보세요.</div></div>')
     cats = []
     for cat, cslug in CAT_SLUG.items():
         group = [i for i in items if i["category"] == cat]
