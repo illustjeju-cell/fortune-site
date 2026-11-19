@@ -10,9 +10,8 @@ h2{font-size:20px;margin:0 0 8px}
 .crumb{color:#7a8699;font-size:13px;margin:0 0 4px}
 .intro{font-size:16.5px;background:#fff;border:1px solid #e3e8ef;border-radius:12px;padding:16px 18px}
 .search{margin:14px 0 20px}
-.searchrow{display:flex;gap:8px}
-.search input{flex:1;font-size:17px;padding:14px 16px;border:2px solid #123a6d;border-radius:12px;outline:none;min-width:0}
-#go{background:#123a6d;color:#fff;border:0;border-radius:12px;font-size:16.5px;font-weight:800;padding:0 22px;cursor:pointer;white-space:nowrap}
+.search input{display:block;width:100%;font-size:17px;padding:14px 16px;border:2px solid #123a6d;border-radius:12px;outline:none}
+#go{display:block;width:100%;margin-top:10px;background:#123a6d;color:#fff;border:0;border-radius:12px;font-size:18px;font-weight:800;padding:15px 22px;cursor:pointer}
 #go:active{opacity:.85}
 .hidden{display:none}
 #noresult{color:#8a94a6;margin-top:8px;font-size:14px}
