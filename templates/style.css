@@ -1,0 +1,34 @@
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,"Malgun Gothic","Apple SD Gothic Neo",sans-serif;color:#1c2430;background:#f7f8fa;line-height:1.65}
+a{color:#123a6d;text-decoration:none}
+.top{display:flex;justify-content:space-between;align-items:center;background:#123a6d;padding:12px 18px;position:sticky;top:0;z-index:10}
+.top .brand{color:#fff;font-weight:800;font-size:19px}
+.top nav a{color:#dbe6f5;margin-left:16px;font-size:15px}
+main{max-width:860px;margin:0 auto;padding:22px 16px 40px}
+h1{font-size:27px;margin:10px 0 12px}
+h2{font-size:20px;margin:0 0 8px}
+.crumb{color:#7a8699;font-size:13px;margin:0 0 4px}
+.intro{font-size:16.5px;background:#fff;border:1px solid #e3e8ef;border-radius:12px;padding:16px 18px}
+.search{margin:14px 0 20px}
+.search input{width:100%;font-size:17px;padding:14px 16px;border:2px solid #123a6d;border-radius:12px;outline:none}
+.hidden{display:none}
+#noresult{color:#8a94a6;margin-top:8px;font-size:14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.card{display:block;background:#fff;border:1px solid #e3e8ef;border-radius:12px;padding:14px}
+.card:hover{border-color:#123a6d}
+.cardkw{display:block;font-weight:700;font-size:17px;color:#1c2430}
+.cardsub{display:block;color:#7a8699;font-size:13px;margin-top:3px}
+.cat{margin:26px 0}
+.cat h2 a{color:#1c2430}
+.sit,.soon,.rel,.next{background:#fff;border:1px solid #e3e8ef;border-radius:12px;padding:18px;margin:14px 0}
+.sit p{margin:6px 0 0}
+.tone{font-size:12.5px;padding:2px 9px;border-radius:20px;vertical-align:middle;margin-left:6px}
+.tone.good{background:#e2f4e5;color:#1d7a35}
+.tone.bad{background:#fdeaea;color:#b3372f}
+.tone.mid{background:#eef1f5;color:#5b6a7d}
+.tone.tae{background:#f1e8fb;color:#7a3ec9}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{background:#eef3fa;border-radius:20px;padding:7px 13px;font-size:14.5px}
+.btn{display:inline-block;background:#123a6d;color:#fff;padding:12px 22px;border-radius:10px;font-weight:700;margin-top:8px}
+.ad{margin:16px 0;min-height:90px}
+.foot{max-width:860px;margin:0 auto;padding:18px 16px 34px;color:#8a94a6;font-size:13px}
