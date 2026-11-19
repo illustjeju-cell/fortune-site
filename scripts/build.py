@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""운세 나침반 빌드 — data/dreams.json -> dist/ 정적 사이트 생성."""
+"""운세 나침반 빌드 — data/dreams.json -> dist/ 정적 사이트 생성.
+구조: 홈(검색) → 키워드 랜딩(상황 선택) → 상황별 결과 페이지 (입력→결과보기 흐름)."""
 import json, os, html, shutil
 from pathlib import Path
 
@@ -20,7 +21,7 @@ TONE_CLASS = {"길몽": "good", "흉몽": "bad", "중립": "mid", "태몽": "tae
 def esc(s):
     return html.escape(str(s), quote=True)
 
-def ad(slot_kind):
+def ad():
     if not ADSENSE_CLIENT:
         return ""
     if AD_SLOT:
@@ -58,7 +59,7 @@ def head(title, desc, path, og_img=None):
 <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-<header class="top"><a class="brand" href="/">🧭 {SITE_NAME}</a><nav><a href="/#dreams">꿈해몽</a><a href="/saju.html">사주</a></nav></header>
+<header class="top"><a class="brand" href="/">🧭 {SITE_NAME}</a><nav><a href="/#dreams">꿈해몽</a></nav></header>
 <main>
 """
 
@@ -73,7 +74,6 @@ FOOT = """
 </html>"""
 
 def make_card(item):
-    """OG 카드 1200x630 생성."""
     from PIL import Image, ImageDraw, ImageFont
     out = DIST / "cards" / f"{item['slug']}.png"
     if out.exists():
@@ -93,44 +93,71 @@ def make_card(item):
     d.rectangle([0, 560, 1200, 630], fill=NAVY)
     img.save(out)
 
-def detail(item, by_keyword):
+def rel_block(item, by_keyword):
+    rel = [by_keyword[r] for r in item.get("related", []) if r in by_keyword]
+    if not rel:
+        return ""
+    links = "".join(f'<a class="chip" href="/d/{r["slug"]}.html">{esc(r["keyword"])} 꿈해몽</a>' for r in rel)
+    return f'<section class="rel"><h2>함께 보는 꿈해몽</h2><div class="chips">{links}</div></section>'
+
+def landing(item, by_keyword):
     kw = item["keyword"]
-    title = f"{kw} 꿈해몽 — 상황별 풀이 총정리 | {SITE_NAME}"
+    title = f"{kw} 꿈해몽 — 어떤 꿈이었나요? | {SITE_NAME}"
     desc = item["intro"][:150]
     parts = [head(title, desc, f"/d/{item['slug']}.html", f"/cards/{item['slug']}.png")]
     parts.append(f'<p class="crumb"><a href="/">홈</a> · <a href="/c/{CAT_SLUG.get(item["category"], "things")}.html">{esc(item["category"])}</a> · 꿈해몽</p>')
     parts.append(f"<h1>{esc(kw)} 꿈해몽</h1>")
     parts.append(f'<p class="intro">{esc(item["intro"])}</p>')
-    parts.append(ad("top"))
-    for s in item["situations"]:
+    parts.append(ad())
+    parts.append(f'<section class="pick"><h2>어떤 {esc(kw)} 꿈이었나요?</h2><p class="picksub">꿈 내용을 골라보세요. 상황마다 풀이가 다릅니다.</p>')
+    btns = []
+    for n, s in enumerate(item["situations"], 1):
         cls = TONE_CLASS.get(s["tone"], "mid")
-        parts.append(
-            f'<section class="sit"><h2>{esc(s["title"])} '
-            f'<span class="tone {cls}">{esc(s["tone"])}</span></h2>'
-            f'<p>{esc(s["meaning"])}</p></section>')
-    parts.append(ad("bottom"))
-    rel = [by_keyword[r] for r in item.get("related", []) if r in by_keyword]
-    if rel:
-        links = "".join(f'<a class="chip" href="/d/{r["slug"]}.html">{esc(r["keyword"])} 꿈해몽</a>' for r in rel)
-        parts.append(f'<section class="rel"><h2>함께 보는 꿈해몽</h2><div class="chips">{links}</div></section>')
-    parts.append(f'<section class="next"><h2>내 사주도 궁금하다면</h2><p>생년월일로 보는 사주 풀이가 곧 열립니다.</p><a class="btn" href="/saju.html">사주 풀이 미리 보기</a></section>')
+        btns.append(
+            f'<a class="sitbtn" href="/d/{item["slug"]}/{n}.html">'
+            f'<span class="sitbtn-t">{esc(s["title"])}</span>'
+            f'<span class="tone {cls}">{esc(s["tone"])}</span>'
+            f'<span class="sitbtn-go">결과 확인하기 ›</span></a>')
+    parts.append("".join(btns) + "</section>")
+    parts.append(rel_block(item, by_keyword))
+    parts.append(FOOT)
+    return "".join(parts)
+
+def result_page(item, n, s, by_keyword):
+    kw = item["keyword"]
+    title = f"{s['title']} 해몽 — {s['tone']} | {SITE_NAME}"
+    desc = s["meaning"][:150]
+    parts = [head(title, desc, f"/d/{item['slug']}/{n}.html", f"/cards/{item['slug']}.png")]
+    parts.append(f'<p class="crumb"><a href="/">홈</a> · <a href="/d/{item["slug"]}.html">{esc(kw)} 꿈해몽</a> · 결과</p>')
+    cls = TONE_CLASS.get(s["tone"], "mid")
+    parts.append(f'<h1>{esc(s["title"])} <span class="tone {cls}">{esc(s["tone"])}</span></h1>')
+    parts.append(ad())
+    parts.append(f'<section class="sit"><p class="meaning">{esc(s["meaning"])}</p></section>')
+    parts.append(ad())
+    others = []
+    for m, o in enumerate(item["situations"], 1):
+        if m == n:
+            continue
+        others.append(f'<a class="sitbtn small" href="/d/{item["slug"]}/{m}.html"><span class="sitbtn-t">{esc(o["title"])}</span><span class="sitbtn-go">결과 확인하기 ›</span></a>')
+    parts.append(f'<section class="pick"><h2>다른 {esc(kw)} 꿈도 확인해 보세요</h2>' + "".join(others) + "</section>")
+    parts.append(rel_block(item, by_keyword))
+    parts.append(f'<p class="center"><a class="btn" href="/">다른 꿈 검색하기</a></p>')
     parts.append(FOOT)
     return "".join(parts)
 
 def index(items):
-    title = f"{SITE_NAME} | 꿈해몽·사주·오늘의 운세"
-    desc = "어젯밤 그 꿈, 무슨 뜻일까요? 키워드로 찾는 상황별 꿈해몽과 사주 풀이."
+    title = f"{SITE_NAME} | 꿈해몽 — 상황별 꿈풀이"
+    desc = "어젯밤 그 꿈, 무슨 뜻일까요? 키워드를 입력하고 상황을 고르면 해몽을 확인할 수 있습니다."
     parts = [head(title, desc, "/")]
-    parts.append(f"<h1>어젯밤 꿈, 무슨 뜻일까요?</h1>")
-    parts.append('<div class="search"><input id="q" type="search" placeholder="꿈 키워드 검색 (예: 돼지, 똥, 떨어지는 꿈)" autocomplete="off"><div id="noresult" class="hidden">찾는 키워드가 아직 없어요. 아래 목록에서 골라보세요.</div></div>')
-    parts.append('<section class="soon"><h2>🔮 사주 풀이</h2><p>생년월일시로 보는 평생사주 — 준비 중입니다.</p><a class="btn" href="/saju.html">미리 보기</a></section>')
+    parts.append("<h1>어젯밤 꿈, 무슨 뜻일까요?</h1>")
+    parts.append('<div class="search"><div class="searchrow"><input id="q" type="search" placeholder="꿈 키워드 입력 (예: 돼지, 똥, 떨어지는 꿈)" autocomplete="off"><button id="go" type="button">결과 확인하기</button></div><div id="noresult" class="hidden">찾는 키워드가 아직 없어요. 아래 목록에서 골라보세요.</div></div>')
     cats = []
     for cat, cslug in CAT_SLUG.items():
         group = [i for i in items if i["category"] == cat]
         if not group:
             continue
         cards = "".join(
-            f'<a class="card" data-kw="{esc(i["keyword"])}" href="/d/{i["slug"]}.html">'
+            f'<a class="card" data-kw="{esc(i["keyword"])}" data-slug="{esc(i["slug"])}" href="/d/{i["slug"]}.html">'
             f'<span class="cardkw">{esc(i["keyword"])}</span><span class="cardsub">꿈해몽 · 상황 {len(i["situations"])}가지</span></a>'
             for i in group)
         cats.append(f'<section class="cat" id="cat-{cslug}"><h2><a href="/c/{cslug}.html">{esc(cat)}</a></h2><div class="grid">{cards}</div></section>')
@@ -150,14 +177,6 @@ def category_page(cat, cslug, items):
     parts.append(FOOT)
     return "".join(parts)
 
-def saju_page():
-    title = f"사주 풀이 (준비 중) | {SITE_NAME}"
-    parts = [head(title, "생년월일시로 보는 평생사주 풀이, 곧 열립니다.", "/saju.html")]
-    parts.append("<h1>🔮 사주 풀이</h1>")
-    parts.append('<section class="sit"><h2>곧 열립니다</h2><p>생년월일시를 넣으면 사주팔자와 오행을 계산해 성격·재물·애정·건강을 풀어주는 평생사주를 준비하고 있습니다. 계산 정확도를 검증하는 중이라 조금만 기다려 주세요.</p><p>그동안 어젯밤 꿈부터 풀어보세요.</p><a class="btn" href="/">꿈해몽 보러 가기</a></section>')
-    parts.append(FOOT)
-    return "".join(parts)
-
 def main():
     data = json.loads((ROOT / "data" / "dreams.json").read_text(encoding="utf-8"))
     items = data["items"]
@@ -168,15 +187,22 @@ def main():
     (DIST / "c").mkdir(parents=True)
     shutil.copy(ROOT / "templates" / "style.css", DIST / "style.css")
     shutil.copy(ROOT / "templates" / "app.js", DIST / "app.js")
+    n_results = 0
     for item in items:
         make_card(item)
-        (DIST / "d" / f"{item['slug']}.html").write_text(detail(item, by_keyword), encoding="utf-8")
+        (DIST / "d" / f"{item['slug']}.html").write_text(landing(item, by_keyword), encoding="utf-8")
+        sub = DIST / "d" / item["slug"]
+        sub.mkdir(exist_ok=True)
+        for n, s in enumerate(item["situations"], 1):
+            (sub / f"{n}.html").write_text(result_page(item, n, s, by_keyword), encoding="utf-8")
+            n_results += 1
     for cat, cslug in CAT_SLUG.items():
         if any(i["category"] == cat for i in items):
             (DIST / "c" / f"{cslug}.html").write_text(category_page(cat, cslug, items), encoding="utf-8")
     (DIST / "index.html").write_text(index(items), encoding="utf-8")
-    (DIST / "saju.html").write_text(saju_page(), encoding="utf-8")
-    urls = ["/", "/saju.html"] + [f"/c/{CAT_SLUG[i['category']]}.html" for i in items] + [f"/d/{i['slug']}.html" for i in items]
+    urls = ["/"] + [f"/c/{CAT_SLUG[i['category']]}.html" for i in items] \
+        + [f"/d/{i['slug']}.html" for i in items] \
+        + [f"/d/{i['slug']}/{n}.html" for i in items for n in range(1, len(i["situations"]) + 1)]
     urls = sorted(set(urls))
     sm = ['<?xml version="1.0" encoding="UTF-8"?>', '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']
     sm += [f"<url><loc>{SITE_URL}{u}</loc></url>" for u in urls]
@@ -188,7 +214,7 @@ def main():
         (DIST / "ads.txt").write_text(f"google.com, {pub}, DIRECT, f08c47fec0942fa0\n", encoding="utf-8")
     if CNAME:
         (DIST / "CNAME").write_text(CNAME + "\n", encoding="utf-8")
-    print(f"built {len(items)} dream pages, {len(urls)} sitemap urls")
+    print(f"built {len(items)} landings, {n_results} result pages, {len(urls)} sitemap urls")
 
 if __name__ == "__main__":
     main()
