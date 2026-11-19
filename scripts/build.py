@@ -22,14 +22,14 @@ def esc(s):
     return html.escape(str(s), quote=True)
 
 def ad():
-    if not ADSENSE_CLIENT:
+    # 수동 슬롯이 없으면(자동광고만) 빈 광고 상자를 만들지 않는다 — 빈 공간만 생긴다.
+    # 자동광고는 구글 스크립트가 알아서 자리를 잡는다. 슬롯을 설정하면 그때 상자가 생긴다.
+    if not ADSENSE_CLIENT or not AD_SLOT:
         return ""
-    if AD_SLOT:
-        return (f'<div class="ad"><ins class="adsbygoogle" style="display:block" '
-                f'data-ad-client="{ADSENSE_CLIENT}" data-ad-slot="{AD_SLOT}" '
-                f'data-ad-format="auto" data-full-width-responsive="true"></ins>'
-                f'<script>(adsbygoogle = window.adsbygoogle || []).push({{}});</script></div>')
-    return '<div class="ad ad-auto"></div>'
+    return (f'<div class="ad"><ins class="adsbygoogle" style="display:block" '
+            f'data-ad-client="{ADSENSE_CLIENT}" data-ad-slot="{AD_SLOT}" '
+            f'data-ad-format="auto" data-full-width-responsive="true"></ins>'
+            f'<script>(adsbygoogle = window.adsbygoogle || []).push({{}});</script></div>')
 
 def head(title, desc, path, og_img=None):
     ads = ""
@@ -73,11 +73,43 @@ FOOT = """
 </body>
 </html>"""
 
+def _asset_path(base):
+    for ext in ("jpg", "png"):
+        p = ROOT / "assets" / f"{base}.{ext}"
+        if p.exists():
+            return p
+    return None
+
+def _fonts():
+    from PIL import ImageFont
+    bold = "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc"
+    return ImageFont.truetype(bold, 30), ImageFont.truetype(bold, 64)
+
+def composite_card(asset_base, out_name, big_text, brand_line):
+    """일러스트(assets) 위에 하단 남색 반투명 띠+글자를 얹은 공유 카드(1200×630 JPG)."""
+    from PIL import Image, ImageDraw
+    out = DIST / "cards" / out_name
+    out.parent.mkdir(parents=True, exist_ok=True)
+    src = _asset_path(asset_base)
+    if src is None:
+        return False
+    img = Image.open(src).convert("RGB")
+    if img.size != (1200, 630):
+        img = img.resize((1200, 630))
+    band = Image.new("RGBA", (1200, 150), (18, 58, 109, 208))
+    img.paste(band, (0, 630 - 150), band)
+    d = ImageDraw.Draw(img)
+    f_brand, f_big = _fonts()
+    d.text((48, 630 - 150 + 14), brand_line, font=f_brand, fill=(243, 201, 105))
+    d.text((48, 630 - 150 + 54), big_text, font=f_big, fill=(255, 255, 255))
+    img.save(out, "JPEG", quality=88)
+    return True
+
 def make_card(item):
-    from PIL import Image, ImageDraw, ImageFont
-    out = DIST / "cards" / f"{item['slug']}.png"
-    if out.exists():
+    if composite_card(item["slug"], f"{item['slug']}.jpg", f"{item['keyword']} 꿈해몽", SITE_NAME):
         return
+    from PIL import Image, ImageDraw, ImageFont
+    out = DIST / "cards" / f"{item['slug']}.jpg"
     out.parent.mkdir(parents=True, exist_ok=True)
     img = Image.new("RGB", (1200, 630), (255, 255, 255))
     d = ImageDraw.Draw(img)
@@ -91,7 +123,7 @@ def make_card(item):
     d.text((48, 190), f"{item['keyword']} 꿈", font=f_big, fill=(20, 20, 20))
     d.text((48, 360), "상황별 꿈해몽 풀이", font=f_sub, fill=(90, 90, 90))
     d.rectangle([0, 560, 1200, 630], fill=NAVY)
-    img.save(out)
+    img.save(out, "JPEG", quality=88)
 
 def rel_block(item, by_keyword):
     rel = [by_keyword[r] for r in item.get("related", []) if r in by_keyword]
@@ -104,7 +136,7 @@ def landing(item, by_keyword):
     kw = item["keyword"]
     title = f"{kw} 꿈해몽 — 어떤 꿈이었나요? | {SITE_NAME}"
     desc = item["intro"][:150]
-    parts = [head(title, desc, f"/d/{item['slug']}.html", f"/cards/{item['slug']}.png")]
+    parts = [head(title, desc, f"/d/{item['slug']}.html", f"/cards/{item['slug']}.jpg")]
     parts.append(f'<p class="crumb"><a href="/">홈</a> · <a href="/c/{CAT_SLUG.get(item["category"], "things")}.html">{esc(item["category"])}</a> · 꿈해몽</p>')
     parts.append(f"<h1>{esc(kw)} 꿈해몽</h1>")
     parts.append(f'<p class="intro">{esc(item["intro"])}</p>')
@@ -127,7 +159,7 @@ def result_page(item, n, s, by_keyword):
     kw = item["keyword"]
     title = f"{s['title']} 해몽 — {s['tone']} | {SITE_NAME}"
     desc = s["meaning"][:150]
-    parts = [head(title, desc, f"/d/{item['slug']}/{n}.html", f"/cards/{item['slug']}.png")]
+    parts = [head(title, desc, f"/d/{item['slug']}/{n}.html", f"/cards/{item['slug']}.jpg")]
     parts.append(f'<p class="crumb"><a href="/">홈</a> · <a href="/d/{item["slug"]}.html">{esc(kw)} 꿈해몽</a> · 결과</p>')
     cls = TONE_CLASS.get(s["tone"], "mid")
     parts.append(f'<h1>{esc(s["title"])} <span class="tone {cls}">{esc(s["tone"])}</span></h1>')
@@ -148,7 +180,7 @@ def result_page(item, n, s, by_keyword):
 def index(items):
     title = f"{SITE_NAME} | 꿈해몽 — 상황별 꿈풀이"
     desc = "어젯밤 그 꿈, 무슨 뜻일까요? 키워드를 입력하고 상황을 고르면 해몽을 확인할 수 있습니다."
-    parts = [head(title, desc, "/")]
+    parts = [head(title, desc, "/", "/cards/home.jpg")]
     parts.append("<h1>어젯밤 꿈, 무슨 뜻일까요?</h1>")
     parts.append('<div class="search"><input id="q" type="search" placeholder="꿈 키워드 입력 (예: 돼지, 똥, 떨어지는 꿈)" autocomplete="off"><button id="go" type="button">결과 확인하기</button><div id="noresult" class="hidden">찾는 키워드가 아직 없어요. 아래 목록에서 골라보세요.</div></div>')
     cats = []
@@ -168,7 +200,7 @@ def index(items):
 def category_page(cat, cslug, items):
     group = [i for i in items if i["category"] == cat]
     title = f"{cat} 꿈해몽 모음 | {SITE_NAME}"
-    parts = [head(title, f"{cat} 관련 꿈해몽 {len(group)}가지 키워드를 모았습니다.", f"/c/{cslug}.html")]
+    parts = [head(title, f"{cat} 관련 꿈해몽 {len(group)}가지 키워드를 모았습니다.", f"/c/{cslug}.html", f"/cards/cat_{cslug}.jpg")]
     parts.append(f'<p class="crumb"><a href="/">홈</a> · 꿈해몽</p><h1>{esc(cat)} 꿈해몽</h1>')
     cards = "".join(
         f'<a class="card" href="/d/{i["slug"]}.html"><span class="cardkw">{esc(i["keyword"])}</span>'
@@ -187,6 +219,10 @@ def main():
     (DIST / "c").mkdir(parents=True)
     shutil.copy(ROOT / "templates" / "style.css", DIST / "style.css")
     shutil.copy(ROOT / "templates" / "app.js", DIST / "app.js")
+    composite_card("home", "home.jpg", SITE_NAME, "꿈해몽 · 상황별 풀이")
+    for cat, cslug in CAT_SLUG.items():
+        if any(i["category"] == cat for i in items):
+            composite_card(f"cat_{cslug}", f"cat_{cslug}.jpg", f"{cat} 꿈해몽", SITE_NAME)
     n_results = 0
     for item in items:
         make_card(item)
