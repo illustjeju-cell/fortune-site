@@ -45,6 +45,7 @@ def head(title, desc, path, og_img=None):
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{esc(title)}</title>
 <meta name="description" content="{esc(desc)}">
+<meta name="naver-site-verification" content="120c5b1ca1cf7137de31a13d4352a702cf13457f">
 <link rel="canonical" href="{og}">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="{SITE_NAME}">
